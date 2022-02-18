@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <shared_mutex>
+
 namespace til
 {
     namespace details

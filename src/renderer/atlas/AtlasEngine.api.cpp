@@ -4,6 +4,10 @@
 #include "pch.h"
 #include "AtlasEngine.h"
 
+#include <NearbyFontCollection.h>
+
+extern NearbyFontCollection nearbyFontCollection;
+
 // #### NOTE ####
 // If you see any code in here that contains "_r." you might be seeing a race condition.
 // The AtlasEngine::Present() method is called on a background thread without any locks,
@@ -401,7 +405,49 @@ void AtlasEngine::ToggleShaderEffects() noexcept
 }
 
 [[nodiscard]] HRESULT AtlasEngine::UpdateFont(const FontInfoDesired& fontInfoDesired, FontInfo& fontInfo, const std::unordered_map<std::wstring_view, uint32_t>& features, const std::unordered_map<std::wstring_view, float>& axes) noexcept
-try
+{
+    try
+    {
+        _updateFont(fontInfoDesired, fontInfo, features, axes);
+    }
+    catch (...)
+    {
+        LOG_CAUGHT_EXCEPTION();
+
+        try
+        {
+            const FontInfoDesired fallback{
+                /* faceName */ L"Consolas",
+                /* family */ 0,
+                /* weight */ 400,
+                /* coordSizeDesired */ { 0, 12 },
+                /* uiCodePage */ 0,
+            };
+            _updateFont(fallback, fontInfo, features, axes);
+        }
+        CATCH_RETURN();
+    }
+
+    return S_OK;
+}
+
+void AtlasEngine::UpdateHyperlinkHoveredId(const uint16_t hoveredId) noexcept
+{
+    _api.hyperlinkHoveredId = hoveredId;
+}
+
+#pragma endregion
+
+void AtlasEngine::_resolveAntialiasingMode() noexcept
+{
+    // If the user asks for ClearType, but also for a transparent background
+    // (which our ClearType shader doesn't simultaneously support)
+    // then we need to sneakily force the renderer to grayscale AA.
+    const auto forceGrayscaleAA = _api.antialiasingMode == D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE && !_api.backgroundOpaqueMixin;
+    _api.realizedAntialiasingMode = forceGrayscaleAA ? D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE : _api.antialiasingMode;
+}
+
+void AtlasEngine::_updateFont(const FontInfoDesired& fontInfoDesired, FontInfo& fontInfo, const std::unordered_map<std::wstring_view, uint32_t>& features, const std::unordered_map<std::wstring_view, float>& axes)
 {
     std::vector<DWRITE_FONT_FEATURE> fontFeatures;
     if (!features.empty())
@@ -489,25 +535,6 @@ try
         _api.cellCount = _api.sizeInPixel / _api.fontMetrics.cellSize;
         WI_SetFlag(_api.invalidations, ApiInvalidations::Size);
     }
-
-    return S_OK;
-}
-CATCH_RETURN()
-
-void AtlasEngine::UpdateHyperlinkHoveredId(const uint16_t hoveredId) noexcept
-{
-    _api.hyperlinkHoveredId = hoveredId;
-}
-
-#pragma endregion
-
-void AtlasEngine::_resolveAntialiasingMode() noexcept
-{
-    // If the user asks for ClearType, but also for a transparent background
-    // (which our ClearType shader doesn't simultaneously support)
-    // then we need to sneakily force the renderer to grayscale AA.
-    const auto forceGrayscaleAA = _api.antialiasingMode == D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE && !_api.backgroundOpaqueMixin;
-    _api.realizedAntialiasingMode = forceGrayscaleAA ? D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE : _api.antialiasingMode;
 }
 
 void AtlasEngine::_resolveFontMetrics(const FontInfoDesired& fontInfoDesired, FontInfo& fontInfo, FontMetrics* fontMetrics) const
@@ -530,16 +557,15 @@ void AtlasEngine::_resolveFontMetrics(const FontInfoDesired& fontInfoDesired, Fo
         requestedWeight = DWRITE_FONT_WEIGHT_NORMAL;
     }
 
-    wil::com_ptr<IDWriteFontCollection> systemFontCollection;
-    THROW_IF_FAILED(_sr.dwriteFactory->GetSystemFontCollection(systemFontCollection.addressof(), false));
+    const auto fontCollection = nearbyFontCollection.GetCached();
 
     u32 index = 0;
     BOOL exists = false;
-    THROW_IF_FAILED(systemFontCollection->FindFamilyName(requestedFaceName, &index, &exists));
+    THROW_IF_FAILED(fontCollection->FindFamilyName(requestedFaceName, &index, &exists));
     THROW_HR_IF(DWRITE_E_NOFONT, !exists);
 
     wil::com_ptr<IDWriteFontFamily> fontFamily;
-    THROW_IF_FAILED(systemFontCollection->GetFontFamily(index, fontFamily.addressof()));
+    THROW_IF_FAILED(fontCollection->GetFontFamily(index, fontFamily.addressof()));
 
     wil::com_ptr<IDWriteFont> font;
     THROW_IF_FAILED(fontFamily->GetFirstMatchingFont(static_cast<DWRITE_FONT_WEIGHT>(requestedWeight), DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, font.addressof()));

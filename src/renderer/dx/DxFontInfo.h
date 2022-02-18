@@ -59,11 +59,11 @@ namespace Microsoft::Console::Render
         [[nodiscard]] std::wstring _GetFontFamilyName(gsl::not_null<IDWriteFontFamily*> const fontFamily,
                                                       std::wstring& localeName);
 
-        [[nodiscard]] IDWriteFontCollection* _NearbyCollection(gsl::not_null<IDWriteFactory1*> dwriteFactory);
+        [[nodiscard]] IDWriteFontCollection* _NearbyCollection();
 
         [[nodiscard]] static std::vector<std::filesystem::path> s_GetNearbyFonts();
 
-        ::Microsoft::WRL::ComPtr<IDWriteFontCollection> _nearbyCollection;
+        wil::com_ptr<IDWriteFontCollection> _nearbyCollection;
 
         // The font name we should be looking for
         std::wstring _familyName;

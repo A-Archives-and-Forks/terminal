@@ -7,7 +7,10 @@
 #include <shader_ps.h>
 #include <shader_vs.h>
 
+#include <NearbyFontCollection.h>
 #include "../../interactivity/win32/CustomWindowMessages.h"
+
+NearbyFontCollection nearbyFontCollection;
 
 // #### NOTE ####
 // This file should only contain methods that are only accessed by the caller of Present() (the "Renderer" class).
@@ -1015,6 +1018,8 @@ void AtlasEngine::_recreateFontDependentResources()
             }
         });
 
+        const auto fontCollection = nearbyFontCollection.GetCached();
+
         for (auto italic = 0; italic < 2; ++italic)
         {
             for (auto bold = 0; bold < 2; ++bold)
@@ -1023,7 +1028,7 @@ void AtlasEngine::_recreateFontDependentResources()
                 const auto fontStyle = italic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
                 auto& textFormat = _r.textFormats[italic][bold];
 
-                THROW_IF_FAILED(_sr.dwriteFactory->CreateTextFormat(_api.fontMetrics.fontName.get(), nullptr, fontWeight, fontStyle, DWRITE_FONT_STRETCH_NORMAL, _api.fontMetrics.fontSizeInDIP, L"", textFormat.put()));
+                THROW_IF_FAILED(_sr.dwriteFactory->CreateTextFormat(_api.fontMetrics.fontName.get(), fontCollection.get(), fontWeight, fontStyle, DWRITE_FONT_STRETCH_NORMAL, _api.fontMetrics.fontSizeInDIP, L"", textFormat.put()));
                 textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
                 textFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
 

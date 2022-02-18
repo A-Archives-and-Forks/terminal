@@ -615,6 +615,7 @@ namespace Microsoft::Console::Render
 
         // AtlasEngine.api.cpp
         void _resolveAntialiasingMode() noexcept;
+        void _updateFont(const FontInfoDesired& fontInfoDesired, FontInfo& fontInfo, const std::unordered_map<std::wstring_view, uint32_t>& features, const std::unordered_map<std::wstring_view, float>& axes);
         void _resolveFontMetrics(const FontInfoDesired& fontInfoDesired, FontInfo& fontInfo, FontMetrics* fontMetrics = nullptr) const;
 
         // AtlasEngine.r.cpp
