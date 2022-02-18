@@ -54,6 +54,7 @@
        in our CascadiaPackage project.
   -->
   <PropertyGroup>
+	  <_VC_Target_Library_Platform>Desktop</_VC_Target_Library_Platform>
     <_NoWinAPIFamilyApp>true</_NoWinAPIFamilyApp>
   </PropertyGroup>
 
